@@ -12,7 +12,10 @@ Cette application démontre comment **GitHub Copilot Coding Agent** peut génér
 - ✅ **Validation des entrées** avec messages d'erreur détaillés
 - ✅ **Documentation Swagger/OpenAPI** interactive
 - ✅ **Base de données en mémoire** réinitialisable
-- ✅ **Tests unitaires et d'intégration** (18 tests)
+- ✅ **Liste et recherche de devis** avec pagination
+- ✅ **Statistiques** sur les devis calculés
+- ✅ **Support CORS** pour intégration frontend
+- ✅ **Tests unitaires et d'intégration** (24 tests)
 - ✅ **CI/CD avec GitHub Actions**
 
 ## 🏗️ Architecture
@@ -166,6 +169,106 @@ curl -X POST http://localhost:5083/admin/reset \
 }
 ```
 
+### `GET /quotes` - Liste des devis avec pagination
+
+Récupère tous les devis enregistrés avec support de pagination.
+
+**Paramètres de requête :**
+- `page` (optionnel) : Numéro de page (défaut: 1)
+- `pageSize` (optionnel) : Nombre d'éléments par page (défaut: 10, max: 100)
+
+```bash
+curl http://localhost:5083/quotes?page=1&pageSize=10
+```
+
+**Réponse :**
+
+```json
+{
+  "page": 1,
+  "pageSize": 10,
+  "totalQuotes": 2,
+  "totalPages": 1,
+  "quotes": [
+    {
+      "id": 2,
+      "age": 50,
+      "status": 1,
+      "familyOption": false,
+      "accidentOption": true,
+      "seniorityMonths": 24,
+      "premium": 19.00,
+      "createdAt": "2025-12-09T11:31:51.116Z"
+    },
+    {
+      "id": 1,
+      "age": 42,
+      "status": 0,
+      "familyOption": true,
+      "accidentOption": false,
+      "seniorityMonths": 36,
+      "premium": 17.00,
+      "createdAt": "2025-12-09T11:31:42.087Z"
+    }
+  ]
+}
+```
+
+### `GET /quotes/{id}` - Récupérer un devis spécifique
+
+```bash
+curl http://localhost:5083/quotes/1
+```
+
+**Réponse (200 OK) :**
+
+```json
+{
+  "id": 1,
+  "age": 42,
+  "status": 0,
+  "familyOption": true,
+  "accidentOption": false,
+  "seniorityMonths": 36,
+  "premium": 17.00,
+  "createdAt": "2025-12-09T11:31:42.087Z"
+}
+```
+
+**Erreur (404 Not Found) :**
+
+```json
+{
+  "error": "Quote not found",
+  "id": 999
+}
+```
+
+### `GET /statistics` - Statistiques sur les devis
+
+Récupère des statistiques agrégées sur tous les devis.
+
+```bash
+curl http://localhost:5083/statistics
+```
+
+**Réponse :**
+
+```json
+{
+  "totalQuotes": 2,
+  "averagePremium": 18.00,
+  "minPremium": 17.00,
+  "maxPremium": 19.00,
+  "byStatus": {
+    "SalariedEmployee": 1,
+    "HouseholdEmployer": 1
+  },
+  "withFamilyOption": 1,
+  "withAccidentOption": 1
+}
+```
+
 ## 💼 Règles métier
 
 Le calcul de la prime suit ces règles :
@@ -203,7 +306,7 @@ Pour un salarié de 42 ans avec option famille et 36 mois d'ancienneté :
 
 ## 🧪 Tests
 
-Le projet contient **18 tests** couvrant :
+Le projet contient **24 tests** couvrant :
 
 ### Tests unitaires (`QuoteServiceTests`)
 - ✅ Calcul de prime avec différentes combinaisons
@@ -213,7 +316,9 @@ Le projet contient **18 tests** couvrant :
 
 ### Tests d'intégration (`QuoteApiTests`)
 - ✅ Endpoints HTTP (POST /quote, GET /health, POST /admin/reset)
-- ✅ Validation des erreurs 400
+- ✅ Nouveaux endpoints (GET /quotes, GET /quotes/{id}, GET /statistics)
+- ✅ Pagination des résultats
+- ✅ Validation des erreurs 400 et 404
 - ✅ Authentification admin
 - ✅ Scénarios complexes
 

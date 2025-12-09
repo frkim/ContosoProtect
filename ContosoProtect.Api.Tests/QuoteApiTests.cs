@@ -170,4 +170,133 @@ public class QuoteApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(quote.Breakdown, b => b.Code == "ACCIDENT_OPTION");
         Assert.Contains(quote.Breakdown, b => b.Code == "SENIORITY_DISCOUNT");
     }
+
+    [Fact]
+    public async Task GetAllQuotesEndpoint_ReturnsQuotesWithPagination()
+    {
+        // Arrange - Create some quotes first
+        var request1 = new QuoteRequest
+        {
+            Age = 30,
+            Status = CustomerStatus.SalariedEmployee,
+            FamilyOption = false,
+            AccidentOption = false,
+            SeniorityMonths = 12
+        };
+        var request2 = new QuoteRequest
+        {
+            Age = 45,
+            Status = CustomerStatus.HouseholdEmployer,
+            FamilyOption = true,
+            AccidentOption = false,
+            SeniorityMonths = 24
+        };
+
+        await _client.PostAsJsonAsync("/quote", request1);
+        await _client.PostAsJsonAsync("/quote", request2);
+
+        // Act
+        var response = await _client.GetAsync("/quotes?page=1&pageSize=10");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("page", content);
+        Assert.Contains("totalQuotes", content);
+        Assert.Contains("quotes", content);
+    }
+
+    [Fact]
+    public async Task GetQuoteByIdEndpoint_ExistingQuote_ReturnsQuote()
+    {
+        // Arrange - Create a quote first
+        var request = new QuoteRequest
+        {
+            Age = 35,
+            Status = CustomerStatus.SalariedEmployee,
+            FamilyOption = true,
+            AccidentOption = true,
+            SeniorityMonths = 30
+        };
+        var createResponse = await _client.PostAsJsonAsync("/quote", request);
+        createResponse.EnsureSuccessStatusCode();
+
+        // Act - Get the first quote (ID should be 1 or close to it)
+        var response = await _client.GetAsync("/quotes/1");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("age", content.ToLower());
+        Assert.Contains("premium", content.ToLower());
+    }
+
+    [Fact]
+    public async Task GetQuoteByIdEndpoint_NonExistingQuote_ReturnsNotFound()
+    {
+        // Act
+        var response = await _client.GetAsync("/quotes/99999");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("not found", content.ToLower());
+    }
+
+    [Fact]
+    public async Task StatisticsEndpoint_WithQuotes_ReturnsStatistics()
+    {
+        // Arrange - Create multiple quotes
+        var request1 = new QuoteRequest
+        {
+            Age = 30,
+            Status = CustomerStatus.SalariedEmployee,
+            FamilyOption = true,
+            AccidentOption = false,
+            SeniorityMonths = 12
+        };
+        var request2 = new QuoteRequest
+        {
+            Age = 50,
+            Status = CustomerStatus.HouseholdEmployer,
+            FamilyOption = false,
+            AccidentOption = true,
+            SeniorityMonths = 36
+        };
+
+        await _client.PostAsJsonAsync("/quote", request1);
+        await _client.PostAsJsonAsync("/quote", request2);
+
+        // Act
+        var response = await _client.GetAsync("/statistics");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("totalQuotes", content);
+        Assert.Contains("averagePremium", content);
+        Assert.Contains("minPremium", content);
+        Assert.Contains("maxPremium", content);
+        Assert.Contains("byStatus", content);
+        Assert.Contains("withFamilyOption", content);
+        Assert.Contains("withAccidentOption", content);
+    }
+
+    [Fact]
+    public async Task StatisticsEndpoint_EmptyDatabase_ReturnsZeros()
+    {
+        // Arrange - Reset database first
+        _client.DefaultRequestHeaders.Add("X-Admin-Token", "demo-reset");
+        await _client.PostAsync("/admin/reset", null);
+        _client.DefaultRequestHeaders.Remove("X-Admin-Token");
+
+        // Act
+        var response = await _client.GetAsync("/statistics");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"totalQuotes\":0", content);
+        Assert.Contains("\"averagePremium\":0", content);
+    }
 }

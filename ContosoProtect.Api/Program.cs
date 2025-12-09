@@ -23,9 +23,22 @@ builder.Services.AddDbContext<QuoteDbContext>(options =>
 // Add services
 builder.Services.AddScoped<IQuoteService, QuoteService>();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+app.UseCors();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -106,6 +119,86 @@ app.MapPost("/admin/reset", (HttpContext context, QuoteDbContext db) =>
 .WithTags("Admin")
 .Produces(200)
 .Produces(401);
+
+// Get all quotes with pagination
+app.MapGet("/quotes", (QuoteDbContext db, int page = 1, int pageSize = 10) =>
+{
+    if (page < 1) page = 1;
+    if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
+    var totalQuotes = db.Quotes.Count();
+    var quotes = db.Quotes
+        .OrderByDescending(q => q.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToList();
+
+    return Results.Ok(new
+    {
+        page,
+        pageSize,
+        totalQuotes,
+        totalPages = (int)Math.Ceiling(totalQuotes / (double)pageSize),
+        quotes
+    });
+})
+.WithName("GetAllQuotes")
+.WithTags("Quote")
+.Produces(200);
+
+// Get specific quote by ID
+app.MapGet("/quotes/{id}", (int id, QuoteDbContext db) =>
+{
+    var quote = db.Quotes.Find(id);
+    if (quote == null)
+    {
+        return Results.NotFound(new { error = "Quote not found", id });
+    }
+
+    return Results.Ok(quote);
+})
+.WithName("GetQuoteById")
+.WithTags("Quote")
+.Produces(200)
+.Produces(404);
+
+// Get statistics
+app.MapGet("/statistics", (QuoteDbContext db) =>
+{
+    var quotes = db.Quotes.ToList();
+    
+    if (!quotes.Any())
+    {
+        return Results.Ok(new
+        {
+            totalQuotes = 0,
+            averagePremium = 0m,
+            minPremium = 0m,
+            maxPremium = 0m,
+            byStatus = new Dictionary<string, int>(),
+            withFamilyOption = 0,
+            withAccidentOption = 0
+        });
+    }
+
+    var byStatus = quotes
+        .GroupBy(q => q.Status.ToString())
+        .ToDictionary(g => g.Key, g => g.Count());
+
+    return Results.Ok(new
+    {
+        totalQuotes = quotes.Count,
+        averagePremium = Math.Round(quotes.Average(q => q.Premium), 2),
+        minPremium = quotes.Min(q => q.Premium),
+        maxPremium = quotes.Max(q => q.Premium),
+        byStatus,
+        withFamilyOption = quotes.Count(q => q.FamilyOption),
+        withAccidentOption = quotes.Count(q => q.AccidentOption)
+    });
+})
+.WithName("GetStatistics")
+.WithTags("Statistics")
+.Produces(200);
 
 app.Run();
 
