@@ -1,0 +1,70 @@
+@ContosoProtect.Api_HostAddress = http://localhost:5083
+
+### Health Check
+GET {{ContosoProtect.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+### Calculate Quote - Basic
+POST {{ContosoProtect.Api_HostAddress}}/quote
+Content-Type: application/json
+
+{
+  "age": 42,
+  "status": "SalariedEmployee",
+  "familyOption": true,
+  "accidentOption": false,
+  "seniorityMonths": 36
+}
+
+###
+
+### Calculate Quote - Household Employer
+POST {{ContosoProtect.Api_HostAddress}}/quote
+Content-Type: application/json
+
+{
+  "age": 55,
+  "status": "HouseholdEmployer",
+  "familyOption": false,
+  "accidentOption": true,
+  "seniorityMonths": 12
+}
+
+###
+
+### Calculate Quote - Complex Scenario
+POST {{ContosoProtect.Api_HostAddress}}/quote
+Content-Type: application/json
+
+{
+  "age": 70,
+  "status": "HouseholdEmployer",
+  "familyOption": true,
+  "accidentOption": true,
+  "seniorityMonths": 30
+}
+
+###
+
+### Calculate Quote - Invalid Age (should return 400)
+POST {{ContosoProtect.Api_HostAddress}}/quote
+Content-Type: application/json
+
+{
+  "age": 17,
+  "status": "SalariedEmployee",
+  "familyOption": false,
+  "accidentOption": false,
+  "seniorityMonths": 0
+}
+
+###
+
+### Reset Database (requires admin token)
+POST {{ContosoProtect.Api_HostAddress}}/admin/reset
+X-Admin-Token: demo-reset
+
+###
+
