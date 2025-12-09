@@ -24,6 +24,7 @@ builder.Services.AddDbContext<QuoteDbContext>(options =>
 builder.Services.AddScoped<IQuoteService, QuoteService>();
 
 // Add CORS
+// Note: In production, restrict CORS to specific origins instead of AllowAnyOrigin()
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -165,6 +166,7 @@ app.MapGet("/quotes/{id}", (int id, QuoteDbContext db) =>
 // Get statistics
 app.MapGet("/statistics", (QuoteDbContext db) =>
 {
+    // Note: In production with large datasets, use database aggregation instead of loading all data
     var quotes = db.Quotes.ToList();
     
     if (!quotes.Any())
