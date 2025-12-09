@@ -1,0 +1,6 @@
+@ContosoProtect.Api_HostAddress = http://localhost:5083
+
+GET {{ContosoProtect.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
